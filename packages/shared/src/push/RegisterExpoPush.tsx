@@ -8,6 +8,8 @@ import { pushService } from "../api/pushService";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    // Keep compatibility across Expo notification behavior versions.
+    shouldShowAlert: true,
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
