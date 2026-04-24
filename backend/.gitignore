@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.*
+.env.local
+*.log
+uploads/chat/*
+uploads/profile/*
+!uploads/chat/.gitkeep
+!uploads/profile/.gitkeep

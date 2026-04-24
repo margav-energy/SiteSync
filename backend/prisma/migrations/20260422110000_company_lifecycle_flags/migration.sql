@@ -1,0 +1,4 @@
+ALTER TABLE "Company"
+ADD COLUMN "is_active" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "is_suspended" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "is_archived" BOOLEAN NOT NULL DEFAULT false;

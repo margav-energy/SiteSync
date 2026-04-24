@@ -1,0 +1,354 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  staff
+  supervisor
+  admin
+  superadmin
+}
+
+enum JobCompletionStatus {
+  pending
+  supervisor_approved
+  approved
+}
+
+enum DocumentType {
+  cscs
+  health_safety
+  insurance
+  cpp
+  rams
+}
+
+enum XeroConnectionStatus {
+  active
+  disconnected
+  reauth_required
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  isSuspended Boolean @default(false) @map("is_suspended")
+  isArchived Boolean @default(false) @map("is_archived")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  memberships CompanyMembership[]
+  projects    Project[]
+  invitations CompanyInvitation[]
+  xeroConnection    XeroConnection?
+  xeroOAuthPendings XeroOAuthPending[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  role         UserRole @default(staff)
+  companyId    String   @map("company_id")
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  photoUrl            String?  @map("photo_url")
+  mustChangePassword  Boolean  @default(false) @map("must_change_password")
+  isActive            Boolean  @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  /// Latest Expo push token for remote notifications (mobile).
+  expoPushToken String? @map("expo_push_token") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  timeEntries            TimeEntry[]
+  approvedTimeEntries    TimeEntry[] @relation("TimeEntryApprovedBy")
+  conversationParts      ConversationParticipant[]
+  messagesSent           Message[]
+  notifications          Notification[]
+  jobCompletions         JobCompletion[]
+  incidents              Incident[]
+  incidentsResolved      Incident[] @relation("IncidentResolvedBy")
+  documents              Document[]
+  onboardingRecords      OnboardingRecord[]
+  supervisedProjects     Project[] @relation("ProjectSupervisor")
+  assignedToProjects     Project[] @relation("ProjectAssignedStaff")
+  createdProjects        Project[] @relation("ProjectCreator")
+  xeroConnectionsAsConnector XeroConnection[] @relation("XeroConnectedBy")
+  xeroOAuthPendings      XeroOAuthPending[]
+  memberships            CompanyMembership[]
+}
+
+/// Per-company access for a user (admins may belong to multiple companies).
+model CompanyMembership {
+  userId    String   @map("user_id")
+  companyId String   @map("company_id")
+  role      UserRole
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@map("company_memberships")
+}
+
+enum ProjectType {
+  regular
+  callout
+}
+
+model Project {
+  id          String      @id @default(uuid())
+  name        String
+  companyId   String      @map("company_id")
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  /// Geofence radius for sign in/out (meters). Staff must be within this distance of project lat/lng.
+  allowedRadiusMeters Float @default(150) @map("allowed_radius_meters")
+  projectType ProjectType @default(regular) @map("project_type")
+  category    String?
+  startDate   DateTime?   @map("start_date")
+  photoUrls   String[]    @default([]) @map("photo_urls")
+  supervisorId    String? @map("supervisor_id")
+  supervisor      User?   @relation("ProjectSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
+  assignedStaffId String? @map("assigned_staff_id")
+  assignedStaff   User?   @relation("ProjectAssignedStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  createdByUserId String? @map("created_by_user_id")
+  createdBy       User?   @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  completed       Boolean  @default(false)
+  completedAt     DateTime? @map("completed_at")
+  archived        Boolean   @default(false)
+  archivedAt      DateTime? @map("archived_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  timeEntries     TimeEntry[]
+  conversations   Conversation[]
+  jobCompletions  JobCompletion[]
+  incidents       Incident[]
+}
+
+model CompanyInvitation {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  email     String
+  role      UserRole
+  companyId String    @map("company_id")
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("company_invitations")
+}
+
+model TimeEntry {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String    @map("project_id")
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  signInAt    DateTime  @map("sign_in_at")
+  signOutAt   DateTime? @map("sign_out_at")
+  latitudeIn  Float?    @map("latitude_in")
+  longitudeIn Float?    @map("longitude_in")
+  signInAddress String? @map("sign_in_address")
+  arrivedAt     DateTime? @map("arrived_at")
+  arrivalLatitude Float? @map("arrival_latitude")
+  arrivalLongitude Float? @map("arrival_longitude")
+  arrivalAddress String? @map("arrival_address")
+  travelMinutes Int? @map("travel_minutes")
+  travelMiles   Float? @map("travel_miles")
+  latitudeOut Float?    @map("latitude_out")
+  longitudeOut Float?    @map("longitude_out")
+  signOutAddress String? @map("sign_out_address")
+  accuracyIn  Float?    @map("accuracy_in")
+  accuracyOut Float?    @map("accuracy_out")
+  distanceFromProjectInM  Float? @map("distance_from_project_in_m")
+  distanceFromProjectOutM Float? @map("distance_from_project_out_m")
+  approvedByUserId String?   @map("approved_by_user_id")
+  approvedBy       User?     @relation("TimeEntryApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedAt       DateTime? @map("approved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  projectId String?  @map("project_id")
+  type      ConversationType @default(direct)
+  archivedBy String[] @default([]) @map("archived_by")
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  conversationId String       @map("conversation_id")
+  userId         String       @map("user_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+}
+
+enum ConversationType {
+  direct
+  toolbox
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String   @map("sender_id")
+  sender         User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content        String
+  attachmentUrl  String?  @map("attachment_url")
+  readBy         String[] @default([]) @map("read_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  type      String   @default("info")
+  actionRoute  String? @map("action_route")
+  actionParams Json?   @map("action_params")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model JobCompletion {
+  id          String               @id @default(uuid())
+  userId      String               @map("user_id")
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String               @map("project_id")
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  description String
+  photoUrls   String[]             @default([]) @map("photo_urls")
+  status      JobCompletionStatus  @default(pending)
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+}
+
+model Incident {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String?  @map("project_id")
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  description String
+  severity    String   @default("medium")
+  photoUrl    String?  @map("photo_url")
+  status      String   @default("open")
+  resolutionReport String? @map("resolution_report")
+  resolutionPhotoUrl String? @map("resolution_photo_url")
+  resolvedByUserId String? @map("resolved_by_user_id")
+  resolvedBy  User?    @relation("IncidentResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+
+model Document {
+  id          String       @id @default(uuid())
+  userId      String       @map("user_id")
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        DocumentType
+  name        String
+  url         String
+  expiryDate  DateTime?    @map("expiry_date")
+  verified    Boolean      @default(false)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+}
+
+model OnboardingRecord {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         String    @default("pending")
+  completedAt    DateTime? @map("completed_at")
+  /// Last time an onboarding reminder notification was sent (manual or scheduled).
+  lastReminderAt DateTime? @map("last_reminder_at")
+  newStarter     Json?     @map("new_starter")
+  qualifications Json?
+  policies       Json?
+  cis            Json?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([userId])
+}
+
+/// One row per company: company-scoped Xero tenant and encrypted tokens (never exposed to mobile clients).
+model XeroConnection {
+  id                   String               @id @default(uuid())
+  companyId            String               @unique @map("company_id")
+  company              Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  xeroTenantId         String?              @unique @map("xero_tenant_id")
+  xeroTenantName       String?              @map("xero_tenant_name")
+  xeroConnectionId     String?              @map("xero_connection_id")
+  accessTokenEnc       String?              @map("access_token_enc") @db.Text
+  refreshTokenEnc      String?              @map("refresh_token_enc") @db.Text
+  accessTokenExpiresAt DateTime?            @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime?           @map("refresh_token_expires_at")
+  scopes               String?              @db.Text
+  status               XeroConnectionStatus @default(disconnected)
+  connectedByUserId    String?              @map("connected_by_user_id")
+  connectedBy          User?                @relation("XeroConnectedBy", fields: [connectedByUserId], references: [id], onDelete: SetNull)
+  connectedAt          DateTime?            @map("connected_at")
+  lastRefreshedAt      DateTime?            @map("last_refreshed_at")
+  lastSyncedAt         DateTime?            @map("last_synced_at")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  @@map("xero_connections")
+}
+
+/// Short-lived OAuth handoff when the Xero user has multiple tenants to pick from.
+model XeroOAuthPending {
+  id                   String   @id @default(uuid())
+  companyId            String   @map("company_id")
+  company              Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId               String   @map("user_id")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedTokenBundle String   @map("encrypted_token_bundle") @db.Text
+  tenantsJson          String   @map("tenants_json") @db.Text
+  expiresAt            DateTime @map("expires_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([companyId])
+  @@map("xero_oauth_pending")
+}
+
+model XeroAuditLog {
+  id        String   @id @default(uuid())
+  companyId String?  @map("company_id")
+  userId    String?  @map("user_id")
+  action    String
+  detail    String?  @db.Text
+  meta      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([companyId])
+  @@index([createdAt])
+  @@map("xero_audit_logs")
+}

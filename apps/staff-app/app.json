@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "SiteSync Staff",
+    "slug": "sitesync-staff",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#4a026f"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.staff4dshire.staff",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Select photos to send in chat.",
+        "NSCameraUsageDescription": "Take photos to send in chat."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#4a026f"
+      },
+      "package": "com.staff4dshire.staff"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "SiteSync Staff",
+      "shortName": "SiteSync Staff",
+      "display": "standalone",
+      "themeColor": "#4a026f",
+      "backgroundColor": "#4a026f"
+    }
+  }
+}
