@@ -9,7 +9,7 @@ services:
     autoDeploy: true
     healthCheckPath: /health
     buildCommand: |
-      npm install --workspaces=false
+      npm install --workspaces=false --include=dev
       npm run db:generate
       npx prisma@5.22.0 migrate deploy
       if [ "$SEED_ON_DEPLOY" = "true" ]; then
