@@ -6,6 +6,7 @@ import { signToken, authMiddleware, type AuthedRequest } from '../middleware/aut
 import * as S from '../lib/serialize';
 
 const router = Router();
+const normalizeToken = (raw: string) => raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
 function mapInvitationRole(role: UserRole, mapping: 'strict' | 'invite_link'): UserRole {
   if (mapping === 'strict') return role;
@@ -50,7 +51,7 @@ router.post('/register-invitation', async (req, res) => {
     return res.status(400).json({ error: 'token, password, first_name, last_name required' });
   }
 
-  const token = rawToken.toUpperCase();
+  const token = normalizeToken(rawToken);
   const invitation = await prisma.companyInvitation.findUnique({
     where: { token },
   });

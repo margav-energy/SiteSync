@@ -34,6 +34,7 @@ export function CreateUserScreen() {
   const [inviteRole, setInviteRole] = useState<UserRole>('staff');
   const [generatedCode, setGeneratedCode] = useState('');
   const [companyId, setCompanyId] = useState<string | null>(activeCompanyId ?? null);
+  const [inviteCompanyId, setInviteCompanyId] = useState<string | null>(activeCompanyId ?? null);
 
   const pickPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -76,15 +77,25 @@ export function CreateUserScreen() {
     onError: (e: Error) => Alert.alert('Error', e.message || 'Could not create user'),
   });
   const inviteMutation = useMutation({
-    mutationFn: () =>
-      companyInvitationsService.create({
+    mutationFn: () => {
+      if (user?.role === 'superadmin' && !inviteCompanyId) {
+        throw new Error('Please select a company for this invitation');
+      }
+      return companyInvitationsService.create({
         email: inviteEmail.trim().toLowerCase(),
         role: inviteRole,
-      }),
+        ...(user?.role === 'superadmin' && inviteCompanyId ? { company_id: inviteCompanyId } : {}),
+      });
+    },
     onSuccess: async (data) => {
       setGeneratedCode(data.token);
       await Clipboard.setStringAsync(data.token);
-      Alert.alert('Code generated', 'Invitation code copied to clipboard.');
+      Alert.alert(
+        'Code generated',
+        data.email_sent
+          ? 'Invitation code copied to clipboard and emailed to the invitee.'
+          : 'Invitation code copied to clipboard.'
+      );
     },
     onError: (e: Error) => Alert.alert('Error', e.message || 'Could not generate code'),
   });
@@ -97,6 +108,8 @@ export function CreateUserScreen() {
         style={styles.input}
         autoCapitalize="none"
         keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
         value={email}
         onChangeText={setEmail}
         placeholder="user@company.com"
@@ -167,6 +180,8 @@ export function CreateUserScreen() {
         style={styles.input}
         autoCapitalize="none"
         keyboardType="email-address"
+        autoComplete="off"
+        textContentType="none"
         value={inviteEmail}
         onChangeText={setInviteEmail}
         placeholder="user@company.com"
@@ -184,6 +199,22 @@ export function CreateUserScreen() {
           </TouchableOpacity>
         ))}
       </View>
+      {user?.role === 'superadmin' ? (
+        <>
+          <Text style={styles.label}>Company for code</Text>
+          <View style={styles.roleRow}>
+            {companies.map((c) => (
+              <TouchableOpacity
+                key={`invite-company-${c.id}`}
+                style={[styles.roleChip, inviteCompanyId === c.id && styles.roleChipActive]}
+                onPress={() => setInviteCompanyId(c.id)}
+              >
+                <Text style={[styles.roleText, inviteCompanyId === c.id && styles.roleTextActive]}>{c.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      ) : null}
       <TouchableOpacity
         style={[styles.secondaryBtn, inviteMutation.isPending && styles.saveDisabled]}
         onPress={() => inviteMutation.mutate()}

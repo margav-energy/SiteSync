@@ -18,6 +18,7 @@ import { companyInvitationsService, uploadsService, usersService, useAuthContext
 import type { StaffAuthStackParamList } from '../../navigation/authTypes';
 
 type Props = NativeStackScreenProps<StaffAuthStackParamList, 'InvitationRegister'>;
+const normalizeToken = (raw: string) => raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
 export function InvitationRegisterScreen({ route, navigation }: Props) {
   const [tokenInput, setTokenInput] = useState(route.params?.token ?? '');
@@ -38,7 +39,7 @@ export function InvitationRegisterScreen({ route, navigation }: Props) {
   }, [route.params?.token]);
 
   const loadInvitation = async (raw: string) => {
-    const t = raw.trim().toUpperCase();
+    const t = normalizeToken(raw);
     if (!t) return;
     setLoadingToken(true);
     setInviteEmail(null);
@@ -54,7 +55,7 @@ export function InvitationRegisterScreen({ route, navigation }: Props) {
   };
 
   const submit = async () => {
-    const token = tokenInput.trim().toUpperCase();
+    const token = normalizeToken(tokenInput);
     if (!token || !firstName.trim() || !lastName.trim() || !password.trim()) {
       Alert.alert('Error', 'Fill in invitation code, name and password');
       return;

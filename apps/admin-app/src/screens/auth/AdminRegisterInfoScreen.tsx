@@ -12,7 +12,8 @@ export function AdminRegisterInfoScreen({ navigation }: Props) {
         <Text style={styles.title}>Admin registration</Text>
         <Text style={styles.body}>
           Admin accounts are created by invitation only. Ask your organisation to send you an invitation
-          link or code, then use &quot;Complete invitation&quot; from the sign-in screen.
+          link or code, then use &quot;Complete invitation&quot; from the sign-in screen. You can also request a
+          resend using your invitation email.
         </Text>
         <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
           <Text style={styles.buttonText}>Back to sign in</Text>

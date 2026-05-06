@@ -29,7 +29,7 @@ async function main() {
     },
   });
 
-  const invitationToken = randomBytes(24).toString('hex').toUpperCase();
+  const invitationToken = randomBytes(8).toString('hex').toUpperCase();
   const adminInvitation = await prisma.companyInvitation.create({
     data: {
       token: invitationToken,

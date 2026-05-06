@@ -200,8 +200,19 @@ Press `w` in each Expo terminal to open web.
 Copy `backend/.env.example` to `backend/.env` and configure:
 
 - `DATABASE_URL`
+- `DIRECT_URL` (Neon non-pooler URL for Prisma migrations/introspection)
 - `JWT_SECRET`
+- `EMAIL_FROM` (sender, for example `developer@sitesync.uk`)
+- `SMTP_HOST`
+- `SMTP_PORT` (usually `587`)
+- `SMTP_SECURE` (`false` for 587 STARTTLS, `true` for 465 SSL)
+- `SMTP_USER`
+- `SMTP_PASS`
 - Xero and other optional integration values as needed
+
+For Neon:
+- Set `DATABASE_URL` to the pooled (`-pooler`) connection string for app runtime.
+- Set `DIRECT_URL` to the non-pooled connection string for Prisma CLI operations.
 
 ### Admin / Staff apps
 

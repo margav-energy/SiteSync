@@ -87,6 +87,12 @@ export function LoginScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.linkBtn}
+          onPress={() => navigation.navigate('InvitationRegister', { mode: 'request' })}
+        >
+          <Text style={styles.linkText}>Request invitation code (email)</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.linkBtn}
           onPress={() => navigation.navigate('AdminRegisterInfo')}
         >
           <Text style={styles.linkText}>New admin? Registration info</Text>

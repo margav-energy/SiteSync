@@ -24,6 +24,7 @@ import {
 import type { StaffAuthStackParamList } from '../../navigation/authTypes';
 
 type Nav = NativeStackNavigationProp<StaffAuthStackParamList>;
+const normalizeToken = (raw: string) => raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
 /** Manual code registration: invitation role preserved; photo uploaded after account creation. */
 export function StaffRegisterScreen() {
@@ -40,7 +41,7 @@ export function StaffRegisterScreen() {
   const { registerInvitation, refreshUser } = useAuthContext();
 
   const validateToken = async () => {
-    const t = tokenInput.trim().toUpperCase();
+    const t = normalizeToken(tokenInput);
     if (!t) {
       Alert.alert('Error', 'Enter invitation code');
       return;
@@ -75,7 +76,7 @@ export function StaffRegisterScreen() {
   };
 
   const submit = async () => {
-    const token = tokenInput.trim().toUpperCase();
+    const token = normalizeToken(tokenInput);
     if (!token || !firstName.trim() || !lastName.trim() || !password.trim()) {
       Alert.alert('Error', 'Fill in code, name and password');
       return;

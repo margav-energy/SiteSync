@@ -23,9 +23,15 @@ import {
 import type { AdminAuthStackParamList } from '../../navigation/authTypes';
 
 type Props = NativeStackScreenProps<AdminAuthStackParamList, 'InvitationRegister'>;
+const normalizeToken = (raw: string) => raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
 export function InvitationRegisterScreen({ route, navigation }: Props) {
+  const requestMode = route.params?.mode === 'request';
   const [tokenInput, setTokenInput] = useState(route.params?.token ?? '');
+  const [requestEmail, setRequestEmail] = useState('');
+  const [requestingCode, setRequestingCode] = useState(false);
+  const [requestStatus, setRequestStatus] = useState<string | null>(null);
+  const [showSignup, setShowSignup] = useState(!requestMode);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
@@ -43,7 +49,7 @@ export function InvitationRegisterScreen({ route, navigation }: Props) {
   }, [route.params?.token]);
 
   const loadInvitation = async (raw: string) => {
-    const t = raw.trim().toUpperCase();
+    const t = normalizeToken(raw);
     if (!t) return;
     setLoadingToken(true);
     setInviteEmail(null);
@@ -58,8 +64,29 @@ export function InvitationRegisterScreen({ route, navigation }: Props) {
     }
   };
 
+  const requestCode = async () => {
+    const email = requestEmail.trim().toLowerCase();
+    if (!email) {
+      Alert.alert('Request code', 'Enter your email first.');
+      return;
+    }
+    setRequestingCode(true);
+    setRequestStatus(null);
+    try {
+      const res = await companyInvitationsService.requestCode(email);
+      setRequestStatus(res.message);
+      Alert.alert('Request sent', res.message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not request code';
+      setRequestStatus(String(msg));
+      Alert.alert('Request code', String(msg));
+    } finally {
+      setRequestingCode(false);
+    }
+  };
+
   const submit = async () => {
-    const token = tokenInput.trim().toUpperCase();
+    const token = normalizeToken(tokenInput);
     if (!token || !firstName.trim() || !lastName.trim() || !password.trim()) {
       Alert.alert('Error', 'Fill in invitation code, name and password');
       return;
@@ -118,6 +145,33 @@ export function InvitationRegisterScreen({ route, navigation }: Props) {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Complete invitation</Text>
+        <Text style={styles.label}>Request invitation code</Text>
+        <TextInput
+          style={styles.input}
+          value={requestEmail}
+          onChangeText={setRequestEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          placeholder="name@company.com"
+          placeholderTextColor="#897c98"
+        />
+        <TouchableOpacity style={styles.secondaryBtn} onPress={requestCode} disabled={requestingCode}>
+          {requestingCode ? (
+            <ActivityIndicator color="#4a026f" />
+          ) : (
+            <Text style={styles.secondaryText}>Request code by email</Text>
+          )}
+        </TouchableOpacity>
+        {requestStatus ? <Text style={styles.statusText}>{requestStatus}</Text> : null}
+
+        {!showSignup ? (
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => setShowSignup(true)}>
+            <Text style={styles.secondaryText}>I have a code - continue signup</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {showSignup ? (
+          <>
         <Text style={styles.label}>Invitation code</Text>
         <TextInput
           style={styles.input}
@@ -175,6 +229,12 @@ export function InvitationRegisterScreen({ route, navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <Text style={styles.link}>Back to sign in</Text>
         </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.link}>Back to sign in</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -195,6 +255,7 @@ const styles = StyleSheet.create({
   emailHint: { fontSize: 13, color: '#707173', marginBottom: 12 },
   secondaryBtn: { alignSelf: 'flex-start', marginBottom: 16 },
   secondaryText: { color: '#4a026f', fontWeight: '600' },
+  statusText: { fontSize: 13, color: '#4a026f', marginBottom: 12 },
   preview: { width: 100, height: 100, borderRadius: 50, marginBottom: 16 },
   button: {
     backgroundColor: '#4a026f',
